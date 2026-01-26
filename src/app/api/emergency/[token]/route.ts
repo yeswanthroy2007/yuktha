@@ -11,6 +11,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import dbConnect from '@/lib/db';
+import EmergencyToken from '@/models/EmergencyToken';
+import MedicalInfo from '@/models/MedicalInfo';
+import User from '@/models/User';
 
 interface EmergencyData {
   userName: string;
@@ -23,22 +27,12 @@ interface EmergencyData {
   emergencyContact: string;
 }
 
-/**
- * In a real application, this would:
- * 1. Query the database for emergency info using the token
- * 2. Verify the token exists and hasn't expired
- * 3. Return only the public emergency fields
- * 
- * For this implementation, we simulate the database lookup
- * by fetching from localStorage (since we're using localStorage as our "database")
- */
-
 export async function GET(
   request: NextRequest,
-  context: { params: { token: string } }
+  context: { params: Promise<{ token: string }> }
 ) {
   try {
-    const { token } = context.params;
+    const { token } = await context.params;
 
     // Validate token format
     if (!token || !isValidUUID(token)) {
@@ -48,37 +42,67 @@ export async function GET(
       );
     }
 
-    /**
-     * PRODUCTION IMPLEMENTATION:
-     * Replace this with actual database lookup:
-     * 
-     * const emergencyRecord = await db.query(
-     *   'SELECT * FROM emergency_tokens WHERE token = ? AND expires_at > NOW()',
-     *   [token]
-     * );
-     * 
-     * if (!emergencyRecord) {
-     *   return NextResponse.json(
-     *     { error: 'Invalid or expired emergency QR' },
-     *     { status: 404 }
-     *   );
-     * }
-     * 
-     * const userInfo = await db.query(
-     *   'SELECT emergency_info FROM users WHERE id = ?',
-     *   [emergencyRecord.user_id]
-     * );
-     */
+    await dbConnect();
 
-    // MOCK IMPLEMENTATION: This simulates database lookup
-    const emergencyData = await getEmergencyDataFromToken(token);
+    // Find active token in database
+    const emergencyToken = await EmergencyToken.findOne({
+      token,
+      isActive: true,
+    });
 
-    if (!emergencyData) {
+    if (!emergencyToken) {
       return NextResponse.json(
         { error: 'Invalid or expired emergency QR' },
         { status: 404 }
       );
     }
+
+    // Get user information
+    const user = await User.findById(emergencyToken.userId);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get medical information
+    const medicalInfo = await MedicalInfo.findOne({
+      userId: emergencyToken.userId,
+    });
+
+    // Format emergency contact - handle both string and object formats
+    let emergencyContactString = '';
+    if (medicalInfo?.emergencyContact) {
+      if (typeof medicalInfo.emergencyContact === 'string') {
+        emergencyContactString = medicalInfo.emergencyContact;
+      } else if (typeof medicalInfo.emergencyContact === 'object' && medicalInfo.emergencyContact !== null) {
+        // Handle old object format: {name, phone, relationship}
+        const contact = medicalInfo.emergencyContact as any;
+        if (contact.name && contact.phone) {
+          emergencyContactString = `${contact.name} - ${contact.phone}`;
+          if (contact.relationship) {
+            emergencyContactString += ` (${contact.relationship})`;
+          }
+        } else if (contact.name) {
+          emergencyContactString = contact.name;
+        } else if (contact.phone) {
+          emergencyContactString = contact.phone;
+        }
+      }
+    }
+
+    // Format emergency data
+    const emergencyData: EmergencyData = {
+      userName: user.name || 'Unknown',
+      bloodGroup: medicalInfo?.bloodGroup || 'NOT PROVIDED',
+      bloodGroupOther: medicalInfo?.bloodGroupOther || '',
+      allergies: medicalInfo?.allergies || '',
+      allergiesOther: medicalInfo?.allergiesOther || '',
+      medications: medicalInfo?.medications || '',
+      medicationsOther: medicalInfo?.medicationsOther || '',
+      emergencyContact: emergencyContactString,
+    };
 
     // Return only public emergency fields
     return NextResponse.json(emergencyData, {
@@ -103,50 +127,4 @@ export async function GET(
 function isValidUUID(token: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(token);
-}
-
-/**
- * MOCK: Fetch emergency data by token
- * 
- * In production, this would query your database
- * For now, we simulate by checking if token exists in sessionStorage
- * and retrieving associated emergency info
- * 
- * Real implementation would:
- * 1. Query: SELECT * FROM emergency_tokens WHERE token = ?
- * 2. If found, Query: SELECT emergency_info FROM users WHERE id = token.user_id
- * 3. Return sanitized emergency info
- */
-async function getEmergencyDataFromToken(token: string): Promise<EmergencyData | null> {
-  // MOCK: Simulate database storage
-  // In production, this retrieves from actual database
-  
-  // This is a placeholder implementation
-  // In a real app:
-  // - Database would store: { token, user_id, created_at, expires_at }
-  // - User table would store emergency_info mapped by user_id
-  // - This function would query both tables
-
-  // For now, return mock data if token matches a pattern
-  // In production, replace with actual DB query
-  
-  // Simulate: if token exists in database, return associated emergency info
-  if (isValidUUID(token)) {
-    // Check if we're in a server context where we might have database access
-    // For this MVP, we'll return mock data
-    // Real implementation would query the database here
-    
-    return {
-      userName: 'John Doe',
-      bloodGroup: 'O+',
-      bloodGroupOther: '',
-      allergies: 'Peanuts, Penicillin',
-      allergiesOther: '',
-      medications: 'Metformin 500mg (daily), Lisinopril 10mg (daily)',
-      medicationsOther: '',
-      emergencyContact: 'Jane Doe - 555-123-4567',
-    };
-  }
-
-  return null;
 }

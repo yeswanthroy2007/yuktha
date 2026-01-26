@@ -12,12 +12,12 @@ import { isValidQRCode } from '@/lib/qr';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { qrCode: string } }
+  { params }: { params: Promise<{ qrCode: string }> }
 ) {
   try {
     await db;
 
-    const { qrCode } = params;
+    const { qrCode } = await params;
 
     // Validate QR code format
     if (!isValidQRCode(qrCode)) {

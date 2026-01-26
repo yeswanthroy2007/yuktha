@@ -16,10 +16,10 @@ import { NotificationBell } from "@/components/dashboard/notification-bell";
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { medicines, setMedicines } = useMedicine();
+  const { medicines, setMedicines, loading, refreshMedicines } = useMedicine();
   const [adherence, setAdherence] = useState(0);
-  const [todayMeds, setTodayMeds] = useState(medicines.slice(0,3));
-  const [confirmation, setConfirmation] = useState<{medId: number, status: boolean, medName: string} | null>(null);
+  const [todayMeds, setTodayMeds] = useState<Medicine[]>([]);
+  const [confirmation, setConfirmation] = useState<{medId: string | number, status: boolean, medName: string} | null>(null);
 
   useEffect(() => {
     const takenCount = medicines.filter(m => m.taken === true).length;
@@ -30,8 +30,30 @@ export default function DashboardPage() {
     setTodayMeds(medicines.slice(0,3));
   }, [medicines]);
 
-  const handleDose = (id: number, status: boolean) => {
+  const handleDose = async (id: string | number, status: boolean) => {
+    // Optimistically update UI
     setMedicines(medicines.map(med => med.id === id ? {...med, taken: status} : med));
+    
+    // Sync with backend
+    try {
+      const response = await fetch(`/api/medicines/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ taken: status }),
+      });
+
+      if (!response.ok) {
+        // Revert on error
+        await refreshMedicines();
+        console.error('Failed to update medicine status');
+      }
+    } catch (error) {
+      console.error('Error updating medicine status:', error);
+      // Revert on error
+      await refreshMedicines();
+    }
   };
   
   const handleConfirmDose = () => {
@@ -130,38 +152,55 @@ export default function DashboardPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-          <div className="space-y-4">
-            {todayMeds.map(med => (
-              <Card key={med.id} className="shadow-none sm:shadow-soft flex items-center transition-all hover:sm:shadow-soft-lg">
-                  <CardContent className="p-4 flex items-center gap-4 flex-grow">
-                      <div className={`p-3 rounded-full ${getPillBg(med)}`}>
-                        <Pill className={`h-6 w-6 ${getPillColor(med)}`}/>
-                      </div>
-                      <div className="flex-grow">
-                          <p className="font-semibold">{med.name}</p>
-                          <p className="text-sm text-muted-foreground">{med.dosage}</p>
-                      </div>
-                      <div className="text-right">
-                         <p className="font-medium">{med.time}</p>
-                         {med.taken === null ? (
-                            <div className="flex items-center gap-1 mt-2">
-                               <Button size="icon" variant="outline" className="h-8 w-8 bg-red-100/50 border-red-200 text-red-600 hover:bg-red-100" onClick={() => setConfirmation({medId: med.id, status: false, medName: med.name})}>
-                                    <X className="h-4 w-4"/>
-                                </Button>
-                                <Button size="icon" variant="outline" className="h-8 w-8 bg-green-100/50 border-green-200 text-green-600 hover:bg-green-100" onClick={() => setConfirmation({medId: med.id, status: true, medName: med.name})}>
-                                    <Check className="h-4 w-4"/>
-                                </Button>
-                            </div>
-                        ) : med.taken === true ? (
-                            <Badge className="mt-2" variant="secondary">Taken</Badge>
-                        ) : (
-                            <Badge className="mt-2" variant="destructive">Skipped</Badge>
-                        )}
-                      </div>
-                  </CardContent>
-              </Card>
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Loading medicines...</p>
+            </div>
+          ) : todayMeds.length === 0 ? (
+            <div className="text-center py-12 border-2 border-dashed rounded-lg">
+              <Pill className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-medium">No medicines prescribed yet</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Add medications to see them here.</p>
+              <Button asChild className="mt-4">
+                <Link href="/dashboard/med-tracker">
+                  <Pill className="mr-2 h-4 w-4"/> Add Medicine
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {todayMeds.map(med => (
+                <Card key={med.id} className="shadow-none sm:shadow-soft flex items-center transition-all hover:sm:shadow-soft-lg">
+                    <CardContent className="p-4 flex items-center gap-4 flex-grow">
+                        <div className={`p-3 rounded-full ${getPillBg(med)}`}>
+                          <Pill className={`h-6 w-6 ${getPillColor(med)}`}/>
+                        </div>
+                        <div className="flex-grow">
+                            <p className="font-semibold">{med.name}</p>
+                            <p className="text-sm text-muted-foreground">{med.dosage}</p>
+                        </div>
+                        <div className="text-right">
+                           <p className="font-medium">{med.time}</p>
+                           {med.taken === null ? (
+                              <div className="flex items-center gap-1 mt-2">
+                                 <Button size="icon" variant="outline" className="h-8 w-8 bg-red-100/50 border-red-200 text-red-600 hover:bg-red-100" onClick={() => setConfirmation({medId: med.id, status: false, medName: med.name})}>
+                                      <X className="h-4 w-4"/>
+                                  </Button>
+                                  <Button size="icon" variant="outline" className="h-8 w-8 bg-green-100/50 border-green-200 text-green-600 hover:bg-green-100" onClick={() => setConfirmation({medId: med.id, status: true, medName: med.name})}>
+                                      <Check className="h-4 w-4"/>
+                                  </Button>
+                              </div>
+                          ) : med.taken === true ? (
+                              <Badge className="mt-2" variant="secondary">Taken</Badge>
+                          ) : (
+                              <Badge className="mt-2" variant="destructive">Skipped</Badge>
+                          )}
+                        </div>
+                    </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
     </div>
   );

@@ -4,14 +4,25 @@ import { verifyToken, extractToken } from '@/lib/auth';
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Protect medicine and medical-info endpoints
-  if (
-    pathname.startsWith('/api/medicine') ||
-    pathname.startsWith('/api/medical-info')
-  ) {
-    const authHeader = request.headers.get('authorization');
-    const token = extractToken(authHeader);
+  // Public routes that don't require authentication
+  const publicRoutes = ['/login', '/api/auth/login', '/api/auth/signup'];
+  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route));
 
+  // API routes protection
+  if (pathname.startsWith('/api/')) {
+    // Allow public auth routes
+    if (pathname.startsWith('/api/auth/login') || pathname.startsWith('/api/auth/signup')) {
+      return NextResponse.next();
+    }
+
+    // Allow public emergency API route (NO AUTHENTICATION REQUIRED)
+    if (pathname.startsWith('/api/emergency/')) {
+      return NextResponse.next();
+    }
+
+    // Protect all other API routes
+    const token = extractToken(request);
+    
     if (!token) {
       return NextResponse.json(
         { error: 'Unauthorized: No token provided' },
@@ -39,9 +50,45 @@ export function middleware(request: NextRequest) {
     });
   }
 
+  // Page routes protection
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/doctor')) {
+    const token = extractToken(request);
+    
+    if (!token) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    return NextResponse.next();
+  }
+
+  // Redirect authenticated users away from login page
+  if (pathname === '/login') {
+    const token = extractToken(request);
+    if (token) {
+      const payload = verifyToken(token);
+      if (payload) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+    }
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/api/medicine/:path*', '/api/medical-info/:path*'],
+  matcher: [
+    '/api/:path*',
+    '/dashboard/:path*',
+    '/doctor/:path*',
+    '/login',
+  ],
 };

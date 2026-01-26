@@ -48,16 +48,21 @@ export function verifyToken(token: string): JWTPayload | null {
 }
 
 /**
- * Extract JWT token from request headers
+ * Extract JWT token from request headers or cookies
  */
 export function extractToken(request: NextRequest): string | null {
+  // First try to get from Authorization header
   const authHeader = request.headers.get('Authorization');
-  if (!authHeader) return null;
+  if (authHeader) {
+    const parts = authHeader.split(' ');
+    if (parts.length === 2 && parts[0] === 'Bearer') {
+      return parts[1];
+    }
+  }
 
-  const parts = authHeader.split(' ');
-  if (parts.length !== 2 || parts[0] !== 'Bearer') return null;
-
-  return parts[1];
+  // Then try to get from cookies
+  const token = request.cookies.get('auth-token')?.value;
+  return token || null;
 }
 
 /**
@@ -66,13 +71,42 @@ export function extractToken(request: NextRequest): string | null {
  */
 export async function getAuthenticatedUser(request: NextRequest): Promise<{ userId: string; email: string } | null> {
   const token = extractToken(request);
-  if (!token) return null;
+  if (!token) {
+    console.log('🔒 No token found in request');
+    return null;
+  }
 
   const payload = verifyToken(token);
-  if (!payload) return null;
+  if (!payload) {
+    console.log('🔒 Invalid token');
+    return null;
+  }
 
+  console.log('✅ Authenticated user:', payload.email);
   return {
     userId: payload.userId,
     email: payload.email,
   };
+}
+
+/**
+ * Set JWT token in HTTP-only cookie
+ */
+export function setAuthCookie(response: Response, token: string): void {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  response.cookies.set('auth-token', token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+    path: '/',
+  });
+}
+
+/**
+ * Clear auth cookie
+ */
+export function clearAuthCookie(response: Response): void {
+  response.cookies.delete('auth-token');
 }

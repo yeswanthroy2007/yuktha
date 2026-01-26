@@ -13,7 +13,7 @@ import { getAuthenticatedUser } from '@/lib/auth';
 // PATCH - Update a specific medicine
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await db;
@@ -26,8 +26,10 @@ export async function PATCH(
       );
     }
 
+    const { id } = await params;
+
     // Validate ID format
-    if (!Types.ObjectId.isValid(params.id)) {
+    if (!Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { error: 'Invalid medicine ID' },
         { status: 400 }
@@ -37,7 +39,7 @@ export async function PATCH(
     const body = await request.json();
 
     // Find medicine and verify ownership
-    const medicine = await Medicine.findById(params.id);
+    const medicine = await Medicine.findById(id);
     if (!medicine) {
       return NextResponse.json(
         { error: 'Medicine not found' },
@@ -55,7 +57,7 @@ export async function PATCH(
 
     // Update medicine
     const updatedMedicine = await Medicine.findByIdAndUpdate(
-      params.id,
+      id,
       body,
       { new: true, runValidators: true }
     );
@@ -80,7 +82,7 @@ export async function PATCH(
 // DELETE - Delete a specific medicine
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await db;
@@ -93,8 +95,10 @@ export async function DELETE(
       );
     }
 
+    const { id } = await params;
+
     // Validate ID format
-    if (!Types.ObjectId.isValid(params.id)) {
+    if (!Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { error: 'Invalid medicine ID' },
         { status: 400 }
@@ -102,7 +106,7 @@ export async function DELETE(
     }
 
     // Find medicine and verify ownership
-    const medicine = await Medicine.findById(params.id);
+    const medicine = await Medicine.findById(id);
     if (!medicine) {
       return NextResponse.json(
         { error: 'Medicine not found' },
@@ -119,7 +123,7 @@ export async function DELETE(
     }
 
     // Delete medicine
-    await Medicine.findByIdAndDelete(params.id);
+    await Medicine.findByIdAndDelete(id);
 
     return NextResponse.json(
       {

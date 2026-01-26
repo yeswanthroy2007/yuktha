@@ -8,14 +8,12 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 export interface IMedicalInfo extends Document {
   userId: Types.ObjectId; // Reference to User
   bloodGroup: string;
-  allergies: string[];
-  chronicConditions: string[];
-  emergencyContact: {
-    name: string;
-    phone: string;
-    relationship: string;
-  };
-  medications: string[]; // Current medications
+  bloodGroupOther: string; // For "Other" option
+  allergies: string; // Stored as string for emergency display
+  allergiesOther: string; // For "Other" option
+  medications: string; // Stored as string for emergency display
+  medicationsOther: string; // For "Other" option
+  emergencyContact: string; // Stored as string "Name - Phone"
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,41 +28,38 @@ const medicalInfoSchema = new Schema<IMedicalInfo>(
     },
     bloodGroup: {
       type: String,
-      enum: ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'Unknown'],
-      default: 'Unknown',
+      trim: true,
     },
-    allergies: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    chronicConditions: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
+    bloodGroupOther: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    allergies: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    allergiesOther: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    medications: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    medicationsOther: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     emergencyContact: {
-      name: {
-        type: String,
-        trim: true,
-      },
-      phone: {
-        type: String,
-        trim: true,
-      },
-      relationship: {
-        type: String,
-        trim: true,
-      },
+      type: String,
+      trim: true,
+      default: '',
     },
-    medications: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
   },
   {
     timestamps: true,

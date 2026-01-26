@@ -57,12 +57,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, dosage, frequency, purpose, instructions, startDate, endDate } = body;
+    const { name, dosage, time, frequency, purpose, instructions, startDate, endDate, taken } = body;
 
     // Validation
-    if (!name || !dosage || !frequency) {
+    if (!name || !dosage || !time) {
       return NextResponse.json(
-        { error: 'Medicine name, dosage, and frequency are required' },
+        { error: 'Medicine name, dosage, and time are required' },
         { status: 400 }
       );
     }
@@ -72,9 +72,11 @@ export async function POST(request: NextRequest) {
       userId: authUser.userId,
       name,
       dosage,
-      frequency,
+      time,
+      frequency: frequency || 'Once daily',
       purpose,
       instructions,
+      taken: taken !== undefined ? taken : null,
       startDate: startDate ? new Date(startDate) : new Date(),
       endDate: endDate ? new Date(endDate) : undefined,
     });

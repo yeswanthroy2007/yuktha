@@ -2,7 +2,7 @@
 import { AnalyzeUploadedReportOutput } from "@/ai/flows/analyze-uploaded-report";
 
 export type Medicine = {
-  id: number;
+  id: string | number; // Can be string (MongoDB ObjectId) or number (for backward compatibility)
   name: string;
   dosage: string;
   time: string;

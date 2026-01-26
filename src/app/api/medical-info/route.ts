@@ -6,14 +6,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import dbConnect from '@/lib/db';
 import MedicalInfo from '@/models/MedicalInfo';
+import User from '@/models/User';
 import { getAuthenticatedUser } from '@/lib/auth';
 
 // GET - Fetch user's medical information
 export async function GET(request: NextRequest) {
   try {
-    await db;
+    console.log('📋 Fetching medical info...');
+    await dbConnect();
 
     const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
@@ -26,21 +28,42 @@ export async function GET(request: NextRequest) {
     const medicalInfo = await MedicalInfo.findOne({ userId: authUser.userId });
 
     if (!medicalInfo) {
+      // Return empty structure if not found
       return NextResponse.json(
-        { error: 'Medical information not found' },
-        { status: 404 }
+        {
+          success: true,
+          data: {
+            bloodGroup: '',
+            bloodGroupOther: '',
+            allergies: '',
+            allergiesOther: '',
+            medications: '',
+            medicationsOther: '',
+            emergencyContact: '',
+          },
+        },
+        { status: 200 }
       );
     }
 
+    // Return in format expected by frontend
     return NextResponse.json(
       {
         success: true,
-        data: medicalInfo,
+        data: {
+          bloodGroup: medicalInfo.bloodGroup || '',
+          bloodGroupOther: medicalInfo.bloodGroupOther || '',
+          allergies: medicalInfo.allergies || '',
+          allergiesOther: medicalInfo.allergiesOther || '',
+          medications: medicalInfo.medications || '',
+          medicationsOther: medicalInfo.medicationsOther || '',
+          emergencyContact: medicalInfo.emergencyContact || '',
+        },
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Get medical info error:', error);
+    console.error('❌ Get medical info error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch medical information' },
       { status: 500 }
@@ -51,7 +74,8 @@ export async function GET(request: NextRequest) {
 // POST - Create or update medical information
 export async function POST(request: NextRequest) {
   try {
-    await db;
+    console.log('💾 Saving medical info...');
+    await dbConnect();
 
     const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
@@ -62,7 +86,32 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { bloodGroup, allergies, chronicConditions, emergencyContact, medications } = body;
+    const { 
+      bloodGroup, 
+      bloodGroupOther, 
+      allergies, 
+      allergiesOther, 
+      medications, 
+      medicationsOther, 
+      emergencyContact 
+    } = body;
+
+    // Validate required fields
+    if (!bloodGroup || !allergies || !medications || !emergencyContact) {
+      return NextResponse.json(
+        { error: 'All fields are required' },
+        { status: 400 }
+      );
+    }
+
+    // Process blood group
+    const finalBloodGroup = bloodGroup === 'Other' ? (bloodGroupOther || 'Unknown') : bloodGroup;
+
+    // Process allergies
+    const finalAllergies = allergies === 'Other' ? (allergiesOther || '') : allergies;
+
+    // Process medications
+    const finalMedications = medications === 'Other' ? (medicationsOther || '') : medications;
 
     // Find and update, or create if doesn't exist
     let medicalInfo = await MedicalInfo.findOne({ userId: authUser.userId });
@@ -72,24 +121,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Update fields
-    if (bloodGroup) medicalInfo.bloodGroup = bloodGroup;
-    if (allergies) medicalInfo.allergies = allergies;
-    if (chronicConditions) medicalInfo.chronicConditions = chronicConditions;
-    if (emergencyContact) medicalInfo.emergencyContact = emergencyContact;
-    if (medications) medicalInfo.medications = medications;
+    medicalInfo.bloodGroup = finalBloodGroup;
+    medicalInfo.bloodGroupOther = bloodGroupOther || '';
+    medicalInfo.allergies = finalAllergies;
+    medicalInfo.allergiesOther = allergiesOther || '';
+    medicalInfo.medications = finalMedications;
+    medicalInfo.medicationsOther = medicationsOther || '';
+    medicalInfo.emergencyContact = emergencyContact;
 
     await medicalInfo.save();
+
+    // Update user's emergencyDetailsCompleted flag
+    await User.findByIdAndUpdate(authUser.userId, {
+      emergencyDetailsCompleted: true,
+    });
+
+    console.log('✅ Medical info saved successfully');
 
     return NextResponse.json(
       {
         success: true,
-        data: medicalInfo,
         message: 'Medical information updated successfully',
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Update medical info error:', error);
+    console.error('❌ Update medical info error:', error);
     return NextResponse.json(
       { error: 'Failed to update medical information' },
       { status: 500 }
@@ -100,7 +157,7 @@ export async function POST(request: NextRequest) {
 // PATCH - Update specific fields
 export async function PATCH(request: NextRequest) {
   try {
-    await db;
+    await dbConnect();
 
     const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
@@ -115,15 +172,8 @@ export async function PATCH(request: NextRequest) {
     const medicalInfo = await MedicalInfo.findOneAndUpdate(
       { userId: authUser.userId },
       body,
-      { new: true, runValidators: true }
+      { new: true, runValidators: true, upsert: true }
     );
-
-    if (!medicalInfo) {
-      return NextResponse.json(
-        { error: 'Medical information not found' },
-        { status: 404 }
-      );
-    }
 
     return NextResponse.json(
       {
@@ -133,7 +183,7 @@ export async function PATCH(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Patch medical info error:', error);
+    console.error('❌ Patch medical info error:', error);
     return NextResponse.json(
       { error: 'Failed to update medical information' },
       { status: 500 }

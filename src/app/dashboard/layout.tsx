@@ -19,17 +19,15 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, logout } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (user === null) {
+    if (user === null && !loading) {
       router.push('/login');
-    } else if (user?.role !== 'user') {
-      logout(); // Logout if role is incorrect
     }
-  }, [user, router, logout]);
+  }, [user, loading, router]);
 
   const hideMainLayout = ['/dashboard/add-prescription'].includes(pathname);
   const isDashboard = pathname === '/dashboard';
@@ -48,7 +46,7 @@ export default function DashboardLayout({
       );
   }
   
-  if (!user) {
+  if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <p>Loading...</p>

@@ -11,8 +11,8 @@ import { useEmergencyInfoFetch } from '@/hooks/use-emergency-info-fetch';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 export default function EmergencyPage() {
-  const params = useParams();
-  const token = params.token as string;
+  const params = useParams<{ token: string }>();
+  const token = params?.token as string;
 
   const { data: emergencyInfo, loading, error } = useEmergencyInfoFetch(token);
 
@@ -37,7 +37,7 @@ export default function EmergencyPage() {
             <AlertCircle className="h-12 w-12 text-red-600" />
           </div>
           <h1 className="text-2xl font-bold text-center text-gray-900">
-            Invalid or Expired QR Code
+            Invalid or expired emergency QR
           </h1>
           <p className="text-center text-gray-600">
             {error || 'Unable to retrieve emergency information'}
@@ -121,7 +121,7 @@ export default function EmergencyPage() {
           </section>
         )}
 
-        {/* Emergency Contacts */}
+        {/* Emergency Contact */}
         {emergencyInfo.emergencyContact && (
           <section className="bg-white rounded-lg shadow-md border-l-4 border-orange-600 overflow-hidden">
             <div className="bg-orange-50 px-6 py-4 border-b border-orange-200">
@@ -129,7 +129,17 @@ export default function EmergencyPage() {
             </div>
             <div className="px-6 py-6">
               <p className="text-lg text-gray-800 whitespace-pre-wrap leading-relaxed font-semibold">
-                {emergencyInfo.emergencyContact}
+                {typeof emergencyInfo.emergencyContact === 'string' 
+                  ? emergencyInfo.emergencyContact 
+                  : (() => {
+                      // Defensive check: handle object format if it somehow exists
+                      const contact = emergencyInfo.emergencyContact as any;
+                      if (contact?.name && contact?.phone) {
+                        return `${contact.name} - ${contact.phone}${contact.relationship ? ` (${contact.relationship})` : ''}`;
+                      }
+                      return contact?.name || contact?.phone || 'Contact information not available';
+                    })()
+                }
               </p>
             </div>
           </section>

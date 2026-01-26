@@ -20,11 +20,12 @@ import Link from 'next/link';
 import { useMedicine } from '@/context/medicine-context';
 
 export default function MedTrackerPage() {
-    const { medicines, setMedicines } = useMedicine();
+    const { medicines, setMedicines, loading, refreshMedicines } = useMedicine();
     const [adherence, setAdherence] = useState(0);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-    const [confirmation, setConfirmation] = useState<{medId: number, status: boolean, medName: string} | null>(null);
+    const [confirmation, setConfirmation] = useState<{medId: string | number, status: boolean, medName: string} | null>(null);
+    const [isAdding, setIsAdding] = useState(false);
 
     const [newMedName, setNewMedName] = useState('');
     const [newMedDosage, setNewMedDosage] = useState('');
@@ -44,33 +45,95 @@ export default function MedTrackerPage() {
         setAdherence(newAdherence);
     }, [medicines]);
 
-    const handleDose = (id: number, status: boolean) => {
+    const handleDose = async (id: string | number, status: boolean) => {
+        // Optimistically update UI
         setMedicines(medicines.map(med => med.id === id ? {...med, taken: status} : med));
+        
+        // Sync with backend
+        try {
+            const response = await fetch(`/api/medicines/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ taken: status }),
+            });
+
+            if (!response.ok) {
+                // Revert on error
+                await refreshMedicines();
+                console.error('Failed to update medicine status');
+            }
+        } catch (error) {
+            console.error('Error updating medicine status:', error);
+            // Revert on error
+            await refreshMedicines();
+        }
     };
 
-    const handleAddMedicine = () => {
+    const handleAddMedicine = async () => {
         if (!newMedName || !newMedDosage || !newMedTime) {
             // Simple validation
             alert('Please fill out all fields.');
             return;
         }
-        const newMed: Medicine = {
-            id: Date.now(), // Use timestamp for unique ID
-            name: newMedName,
-            dosage: newMedDosage,
-            time: newMedTime,
-            taken: null
-        };
-        setMedicines([...medicines, newMed]);
-        // Reset form and close modal
-        setNewMedName('');
-        setNewMedDosage('');
-        setNewMedTime('');
-        setIsAddModalOpen(false);
+
+        setIsAdding(true);
+        try {
+            const response = await fetch('/api/medicines', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: newMedName,
+                    dosage: newMedDosage,
+                    time: newMedTime,
+                    frequency: 'Once daily', // Default
+                }),
+            });
+
+            if (response.ok) {
+                // Refresh medicines from backend
+                await refreshMedicines();
+                // Reset form and close modal
+                setNewMedName('');
+                setNewMedDosage('');
+                setNewMedTime('');
+                setIsAddModalOpen(false);
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Failed to add medicine');
+            }
+        } catch (error) {
+            console.error('Error adding medicine:', error);
+            alert('Failed to add medicine. Please try again.');
+        } finally {
+            setIsAdding(false);
+        }
     };
 
-    const handleRemoveMedicine = (id: number) => {
-        setMedicines(medicines.filter(med => med.id !== id));
+    const handleRemoveMedicine = async (id: string | number) => {
+        try {
+            const response = await fetch(`/api/medicines/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                // Refresh medicines from backend
+                await refreshMedicines();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Failed to delete medicine');
+                // Revert on error
+                await refreshMedicines();
+            }
+        } catch (error) {
+            console.error('Error deleting medicine:', error);
+            alert('Failed to delete medicine. Please try again.');
+            // Revert on error
+            await refreshMedicines();
+        }
     };
     
     const handleConfirmDose = () => {
@@ -117,8 +180,10 @@ export default function MedTrackerPage() {
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
-                            <Button onClick={handleAddMedicine}>Add</Button>
+                            <Button variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={isAdding}>Cancel</Button>
+                            <Button onClick={handleAddMedicine} disabled={isAdding}>
+                                {isAdding ? 'Adding...' : 'Add'}
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -166,10 +231,14 @@ export default function MedTrackerPage() {
                     </PopoverContent>
                 </Popover>
             </div>
-             {medicines.length === 0 && (
+             {loading ? (
+                <div className="text-center py-20">
+                    <p className="text-muted-foreground">Loading medicines...</p>
+                </div>
+             ) : medicines.length === 0 ? (
                 <div className="text-center py-20 border-2 border-dashed rounded-lg">
                     <Pill className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-medium">No Medications Scheduled</h3>
+                    <h3 className="mt-4 text-lg font-medium">No medicines prescribed yet</h3>
                     <p className="mt-1 text-sm text-muted-foreground">Add medications manually or scan a prescription to get started.</p>
                      <div className="mt-6 flex justify-center gap-4">
                         <Button onClick={() => setIsAddModalOpen(true)}>
@@ -182,7 +251,7 @@ export default function MedTrackerPage() {
                         </Button>
                     </div>
                 </div>
-             )}
+             ) : null}
              <AlertDialog open={!!confirmation} onOpenChange={(open) => !open && setConfirmation(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

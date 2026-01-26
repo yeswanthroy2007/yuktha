@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { use, useParams, useRouter } from "next/navigation";
 import { mockFamilyMembers } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 export default function FamilyMemberDetailPage() {
     const router = useRouter();
     const params = useParams();
-    const memberId = params.memberId;
+    const memberId = use(params).memberId;
 
     const member = mockFamilyMembers.find(m => m.id === memberId);
 

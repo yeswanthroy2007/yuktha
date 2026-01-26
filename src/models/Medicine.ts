@@ -9,11 +9,13 @@ export interface IMedicine extends Document {
   userId: Types.ObjectId; // Reference to User
   name: string;
   dosage: string; // e.g., "500mg"
+  time: string; // e.g., "8:00 AM" - time of day to take medicine
   frequency: string; // e.g., "Twice daily"
   purpose: string; // e.g., "Blood pressure control"
   startDate: Date;
   endDate?: Date;
   instructions: string;
+  taken: boolean | null; // Daily status: null = not yet, true = taken, false = skipped
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -36,6 +38,11 @@ const medicineSchema = new Schema<IMedicine>(
       required: [true, 'Dosage is required'],
       trim: true,
     },
+    time: {
+      type: String,
+      required: [true, 'Time is required'],
+      trim: true,
+    },
     frequency: {
       type: String,
       required: [true, 'Frequency is required'],
@@ -55,6 +62,10 @@ const medicineSchema = new Schema<IMedicine>(
     instructions: {
       type: String,
       trim: true,
+    },
+    taken: {
+      type: Schema.Types.Mixed, // Can be boolean or null
+      default: null,
     },
     isActive: {
       type: Boolean,

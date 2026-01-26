@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useEmergencyInfo } from "@/context/emergency-info-context";
+import { useAuth } from "@/context/auth-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { type EmergencyInfo } from "@/lib/data";
 
@@ -26,22 +27,65 @@ type SelectableField = 'bloodGroup' | 'allergies' | 'medications';
 
 export function EmergencyInfoModal() {
   const { emergencyInfo, setEmergencyInfo, isModalOpen, setIsModalOpen } = useEmergencyInfo();
+  const { user, refreshUser } = useAuth();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState<EmergencyInfo>(emergencyInfo);
   const [hasFilledInfo, setHasFilledInfo] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-        const filled = !!localStorage.getItem('yuktha-emergency-info-filled');
-        setHasFilledInfo(filled);
+    // Check if user has completed emergency details
+    if (user) {
+      setHasFilledInfo(user.emergencyDetailsCompleted);
+      // Auto-open modal if not completed
+      if (!user.emergencyDetailsCompleted) {
+        setIsModalOpen(true);
+      }
     }
-  }, [isModalOpen]);
-
+  }, [user, isModalOpen]);
 
   useEffect(() => {
     setFormData(emergencyInfo);
   }, [emergencyInfo, isModalOpen]);
+
+  // Fetch emergency info from API on mount
+  useEffect(() => {
+    const fetchEmergencyInfo = async () => {
+      try {
+        const response = await fetch('/api/medical-info');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data) {
+            setFormData({
+              bloodGroup: data.data.bloodGroup || '',
+              bloodGroupOther: data.data.bloodGroupOther || '',
+              allergies: data.data.allergies || '',
+              allergiesOther: data.data.allergiesOther || '',
+              medications: data.data.medications || '',
+              medicationsOther: data.data.medicationsOther || '',
+              emergencyContact: data.data.emergencyContact || '',
+            });
+            setEmergencyInfo({
+              bloodGroup: data.data.bloodGroup || '',
+              bloodGroupOther: data.data.bloodGroupOther || '',
+              allergies: data.data.allergies || '',
+              allergiesOther: data.data.allergiesOther || '',
+              medications: data.data.medications || '',
+              medicationsOther: data.data.medicationsOther || '',
+              emergencyContact: data.data.emergencyContact || '',
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch emergency info:', error);
+      }
+    };
+
+    if (user) {
+      fetchEmergencyInfo();
+    }
+  }, [user]);
 
   const handleSelectChange = (field: SelectableField) => (value: string) => {
     setFormData((prev) => ({
@@ -56,7 +100,7 @@ export function EmergencyInfoModal() {
       setFormData(prev => ({ ...prev, [id]: value }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const { bloodGroup, bloodGroupOther, allergies, allergiesOther, medications, medicationsOther, emergencyContact } = formData;
 
     if (!bloodGroup || 
@@ -75,14 +119,46 @@ export function EmergencyInfoModal() {
         return;
     }
 
-    setEmergencyInfo(formData);
-    localStorage.setItem('yuktha-emergency-info-filled', 'true');
-    setHasFilledInfo(true);
-    setIsModalOpen(false);
-    toast({
-      title: "Success!",
-      description: "Your Emergency Medical File has been saved.",
-    });
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/medical-info', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        setEmergencyInfo(formData);
+        setHasFilledInfo(true);
+        setIsModalOpen(false);
+        
+        // Refresh user data to get updated emergencyDetailsCompleted
+        await refreshUser();
+        
+        toast({
+          title: "Success!",
+          description: "Your Emergency Medical File has been saved.",
+        });
+      } else {
+        const data = await response.json();
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: data.error || "Failed to save emergency information.",
+        });
+      }
+    } catch (error) {
+      console.error('Error saving emergency info:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save emergency information. Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -150,7 +226,14 @@ export function EmergencyInfoModal() {
               </div>
           </div>
           <DialogFooter>
-              <Button type="submit" onClick={handleSubmit} className="w-full">Save Information</Button>
+              <Button 
+                type="submit" 
+                onClick={handleSubmit} 
+                className="w-full"
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Save Information'}
+              </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

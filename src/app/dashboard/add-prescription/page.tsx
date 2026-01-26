@@ -17,7 +17,7 @@ type Status = "idle" | "capturing" | "analyzing" | "success" | "error";
 export default function AddPrescriptionPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { setMedicines } = useMedicine();
+  const { refreshMedicines } = useMedicine();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -115,25 +115,55 @@ export default function AddPrescriptionPage() {
       setError(null);
   }
 
-  const handleAddToMeds = () => {
+  const handleAddToMeds = async () => {
     if (!analysisResult?.medications || analysisResult.medications.length === 0) return;
 
-    const newMeds: Medicine[] = analysisResult.medications.map(med => ({
-      id: Date.now() + Math.random(), // more unique id
-      name: med.name,
-      dosage: med.dosage || 'Not specified',
-      time: '9:00 AM', // Default time, user can edit later
-      taken: null,
-    }));
+    try {
+      // Save all medicines to backend
+      const promises = analysisResult.medications.map(med =>
+        fetch('/api/medicines', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: med.name,
+            dosage: med.dosage || 'Not specified',
+            time: '9:00 AM', // Default time, user can edit later
+            frequency: 'Once daily', // Default
+          }),
+        })
+      );
 
-    setMedicines(prevMeds => [...prevMeds, ...newMeds]);
+      const results = await Promise.all(promises);
+      const failed = results.filter(r => !r.ok);
 
-    toast({
-      title: "Medications Added!",
-      description: `${newMeds.length} new medication(s) have been added to your tracker.`,
-    });
+      if (failed.length > 0) {
+        toast({
+          variant: 'destructive',
+          title: "Error",
+          description: `Failed to add ${failed.length} medication(s). Please try again.`,
+        });
+        return;
+      }
 
-    router.push('/dashboard/med-tracker');
+      // Refresh medicines from backend
+      await refreshMedicines();
+
+      toast({
+        title: "Medications Added!",
+        description: `${analysisResult.medications.length} new medication(s) have been added to your tracker.`,
+      });
+
+      router.push('/dashboard/med-tracker');
+    } catch (error) {
+      console.error('Error adding medicines:', error);
+      toast({
+        variant: 'destructive',
+        title: "Error",
+        description: "Failed to add medications. Please try again.",
+      });
+    }
   }
 
   const renderContent = () => {
