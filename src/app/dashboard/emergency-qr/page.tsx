@@ -12,8 +12,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useEmergencyInfo } from '@/context/emergency-info-context';
 import { useAuth } from '@/context/auth-context';
 import { QRCodeDisplay } from '@/components/qr-code-display';
-import { generateAndStoreToken, getEmergencyUrl } from '@/lib/emergency-token';
-import { RefreshCw, AlertCircle } from 'lucide-react';
+import { getEmergencyUrl } from '@/lib/emergency-token';
+import { RefreshCw, AlertCircle, Download } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -107,15 +107,32 @@ export default function EmergencyQrPage() {
               <p className="mt-4 text-sm text-center text-muted-foreground">
                 Scan to view emergency file securely
               </p>
-              <Button
-                variant="outline"
-                className="w-full mt-6"
-                onClick={() => setShowRegenerateConfirm(true)}
-                disabled={isRegenerating}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                {isRegenerating ? 'Regenerating...' : 'Regenerate'}
-              </Button>
+
+              <div className="grid grid-cols-2 gap-3 w-full mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const canvas = document.querySelector('img[alt="Emergency QR Code"]');
+                    if (canvas) {
+                      const link = document.createElement('a');
+                      link.href = (canvas as HTMLImageElement).src;
+                      link.download = 'my-emergency-qr.png';
+                      link.click();
+                    }
+                  }}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowRegenerateConfirm(true)}
+                  disabled={isRegenerating}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  {isRegenerating ? '.. ' : 'Reset'}
+                </Button>
+              </div>
             </>
           ) : (
             <div className="text-center p-4">

@@ -1,14 +1,10 @@
-/**
- * Public Emergency Information Page
- * Displays patient emergency information when accessed via QR code token
- * NO AUTHENTICATION REQUIRED
- */
-
 'use client';
 
 import { useParams } from 'next/navigation';
 import { useEmergencyInfoFetch } from '@/hooks/use-emergency-info-fetch';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Phone } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export default function EmergencyPage() {
   const params = useParams<{ token: string }>();
@@ -16,141 +12,175 @@ export default function EmergencyPage() {
 
   const { data: emergencyInfo, loading, error } = useEmergencyInfoFetch(token);
 
+  /* ---------------- Loading ---------------- */
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="text-lg font-medium text-muted-foreground">
-            Loading emergency information...
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground animate-pulse">
+            Fetching emergency information…
           </p>
         </div>
       </div>
     );
   }
 
+  /* ---------------- Error ---------------- */
   if (error || !emergencyInfo) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4 max-w-sm">
-          <div className="bg-red-100 p-4 rounded-full">
-            <AlertCircle className="h-12 w-12 text-red-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-center text-gray-900">
-            Invalid or expired emergency QR
-          </h1>
-          <p className="text-center text-gray-600">
-            {error || 'Unable to retrieve emergency information'}
-          </p>
-          <p className="text-center text-sm text-gray-500 mt-4">
-            Please contact the patient or try scanning the QR code again.
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <Card className="max-w-md w-full shadow-soft">
+          <CardContent className="p-6 space-y-4 text-center">
+            <AlertCircle className="h-10 w-10 text-destructive mx-auto" />
+            <h2 className="text-lg font-semibold">Unable to load emergency data</h2>
+            <p className="text-sm text-muted-foreground">
+              This QR code may be invalid or expired.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
+  const phoneMatch =
+    emergencyInfo.emergencyContact?.match(/[\d\-\+\(\)\s]{8,}/);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 shadow-lg">
-        <h1 className="text-3xl font-bold text-center">EMERGENCY MEDICAL INFORMATION</h1>
-        <p className="text-center text-red-100 text-sm mt-2">Important: This information may be life-saving</p>
-      </div>
+    <div className="min-h-screen bg-background pb-10">
+      <main className="max-w-xl mx-auto p-4 sm:p-6 space-y-6">
 
-      {/* Content */}
-      <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6">
+        {/* Title */}
+        <div className="text-center space-y-1">
+          <h1 className="text-xl font-bold font-headline">
+            Emergency Medical Information
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            Authorized emergency access only
+          </p>
+        </div>
+
         {/* Patient Name */}
-        <section className="bg-white rounded-lg shadow-md border-l-4 border-red-600 overflow-hidden">
-          <div className="bg-red-50 px-6 py-4 border-b border-red-200">
-            <h2 className="text-2xl font-bold text-gray-900">{emergencyInfo.userName}</h2>
-          </div>
-        </section>
-
-        {/* Blood Group - Most Important */}
-        <section className="bg-white rounded-lg shadow-md border-l-4 border-blue-600 overflow-hidden">
-          <div className="bg-blue-50 px-6 py-4 border-b border-blue-200">
-            <h2 className="text-lg font-bold text-gray-900">BLOOD GROUP</h2>
-          </div>
-          <div className="px-6 py-6">
-            <p className="text-5xl font-bold text-blue-600 text-center">
-              {emergencyInfo.bloodGroup || 'NOT PROVIDED'}
+        <Card className="shadow-soft">
+          <CardContent className="p-5 space-y-3">
+            <p className="text-xs text-muted-foreground uppercase">
+              Patient Name
             </p>
-          </div>
-        </section>
+            <div className="h-px bg-border/60" />
+            <h2 className="text-2xl font-bold">
+              {emergencyInfo.userName}
+            </h2>
+          </CardContent>
+        </Card>
 
-        {/* Allergies - Critical */}
-        {emergencyInfo.allergies && (
-          <section className="bg-white rounded-lg shadow-md border-l-4 border-yellow-600 overflow-hidden">
-            <div className="bg-yellow-50 px-6 py-4 border-b border-yellow-200">
-              <h2 className="text-lg font-bold text-gray-900">⚠️ ALLERGIES</h2>
-            </div>
-            <div className="px-6 py-6">
-              <p className="text-lg text-gray-800 whitespace-pre-wrap leading-relaxed">
-                {emergencyInfo.allergies}
-              </p>
-            </div>
-          </section>
-        )}
+        {/* Blood + Contact */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-        {/* Medical Conditions */}
-        {emergencyInfo.bloodGroupOther && (
-          <section className="bg-white rounded-lg shadow-md border-l-4 border-purple-600 overflow-hidden">
-            <div className="bg-purple-50 px-6 py-4 border-b border-purple-200">
-              <h2 className="text-lg font-bold text-gray-900">MEDICAL CONDITIONS</h2>
-            </div>
-            <div className="px-6 py-6">
-              <p className="text-lg text-gray-800 whitespace-pre-wrap leading-relaxed">
-                {emergencyInfo.bloodGroupOther}
+          {/* Blood Group */}
+          <Card className="shadow-soft">
+            <CardContent className="p-6 space-y-3 text-center">
+              <p className="text-xs text-muted-foreground uppercase">
+                Blood Group
               </p>
-            </div>
-          </section>
-        )}
+              <div className="h-px bg-border/60" />
+              <div className="text-4xl font-black text-primary">
+                {emergencyInfo.bloodGroup}
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Current Medications */}
-        {emergencyInfo.medications && (
-          <section className="bg-white rounded-lg shadow-md border-l-4 border-green-600 overflow-hidden">
-            <div className="bg-green-50 px-6 py-4 border-b border-green-200">
-              <h2 className="text-lg font-bold text-gray-900">CURRENT MEDICATIONS</h2>
-            </div>
-            <div className="px-6 py-6">
-              <p className="text-lg text-gray-800 whitespace-pre-wrap leading-relaxed">
-                {emergencyInfo.medications}
+          {/* Emergency Contact */}
+          <Card className="shadow-soft">
+            <CardContent className="p-6 space-y-4">
+              <p className="text-xs text-muted-foreground uppercase flex items-center gap-2">
+                <span className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
+                Emergency Contact
               </p>
-            </div>
-          </section>
-        )}
 
-        {/* Emergency Contact */}
-        {emergencyInfo.emergencyContact && (
-          <section className="bg-white rounded-lg shadow-md border-l-4 border-orange-600 overflow-hidden">
-            <div className="bg-orange-50 px-6 py-4 border-b border-orange-200">
-              <h2 className="text-lg font-bold text-gray-900">EMERGENCY CONTACT</h2>
-            </div>
-            <div className="px-6 py-6">
-              <p className="text-lg text-gray-800 whitespace-pre-wrap leading-relaxed font-semibold">
-                {typeof emergencyInfo.emergencyContact === 'string' 
-                  ? emergencyInfo.emergencyContact 
-                  : (() => {
-                      // Defensive check: handle object format if it somehow exists
-                      const contact = emergencyInfo.emergencyContact as any;
-                      if (contact?.name && contact?.phone) {
-                        return `${contact.name} - ${contact.phone}${contact.relationship ? ` (${contact.relationship})` : ''}`;
-                      }
-                      return contact?.name || contact?.phone || 'Contact information not available';
-                    })()
-                }
+              <div className="h-px bg-border/60" />
+
+              <p className="font-semibold">
+                {emergencyInfo.emergencyContact}
               </p>
-            </div>
-          </section>
-        )}
+
+              {phoneMatch && (
+                <Button asChild className="w-full">
+                  <a href={`tel:${phoneMatch[0].trim()}`}>
+                    <Phone className="mr-2 h-4 w-4" />
+                    Call Now
+                  </a>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Allergies */}
+        <Card className="shadow-soft">
+          <CardContent className="p-6 space-y-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              Allergies & Reactions
+            </h3>
+
+            <div className="h-px bg-border/60" />
+
+            {emergencyInfo.allergies || emergencyInfo.allergiesOther ? (
+              <div className="space-y-3">
+                {emergencyInfo.allergies && (
+                  <div className="bg-muted/50 p-3 rounded-md text-sm">
+                    {emergencyInfo.allergies}
+                  </div>
+                )}
+                {emergencyInfo.allergiesOther && (
+                  <div className="bg-muted/50 p-3 rounded-md text-sm">
+                    {emergencyInfo.allergiesOther}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                No known allergies
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Medications */}
+        <Card className="shadow-soft">
+          <CardContent className="p-6 space-y-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              Current Medications
+            </h3>
+
+            <div className="h-px bg-border/60" />
+
+            {emergencyInfo.medications || emergencyInfo.medicationsOther ? (
+              <div className="space-y-3">
+                {emergencyInfo.medications && (
+                  <div className="bg-muted/50 p-3 rounded-md text-sm">
+                    {emergencyInfo.medications}
+                  </div>
+                )}
+                {emergencyInfo.medicationsOther && (
+                  <div className="bg-muted/50 p-3 rounded-md text-sm">
+                    {emergencyInfo.medicationsOther}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                No current medications
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Footer */}
-        <div className="text-center py-6 text-sm text-gray-500 space-y-2">
-          <p>This emergency information is time-sensitive and confidential.</p>
-          <p>DO NOT SHARE or retain this information beyond immediate medical use.</p>
-        </div>
-      </div>
+        <p className="text-center text-xs text-muted-foreground pt-4">
+          Yuktha Medical ID
+        </p>
+
+      </main>
     </div>
   );
 }

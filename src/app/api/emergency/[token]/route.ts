@@ -59,9 +59,10 @@ export async function GET(
 
     // Get user information
     const user = await User.findById(emergencyToken.userId);
+    // If user deleted but token exists, we should probably invalidate token, but for now just error
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User profile associated with this QR code no longer exists' },
         { status: 404 }
       );
     }
@@ -94,14 +95,14 @@ export async function GET(
 
     // Format emergency data
     const emergencyData: EmergencyData = {
-      userName: user.name || 'Unknown',
+      userName: user.name || (user.firstName ? `${user.firstName} ${user.lastName}` : 'Unknown'),
       bloodGroup: medicalInfo?.bloodGroup || 'NOT PROVIDED',
       bloodGroupOther: medicalInfo?.bloodGroupOther || '',
       allergies: medicalInfo?.allergies || '',
       allergiesOther: medicalInfo?.allergiesOther || '',
       medications: medicalInfo?.medications || '',
       medicationsOther: medicalInfo?.medicationsOther || '',
-      emergencyContact: emergencyContactString,
+      emergencyContact: emergencyContactString || 'NO EMERGENCY CONTACT PROVIDED',
     };
 
     // Return only public emergency fields

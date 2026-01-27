@@ -17,45 +17,45 @@ interface EmergencyInfoContextType {
 const EmergencyInfoContext = createContext<EmergencyInfoContextType | undefined>(undefined);
 
 const getInitialState = (): EmergencyInfo => {
-    if (typeof window === 'undefined') {
-        // Return empty state during SSR
-        return {
-            bloodGroup: '',
-            bloodGroupOther: '',
-            allergies: '',
-            allergiesOther: '',
-            medications: '',
-            medicationsOther: '',
-            emergencyContact: ''
-        };
-    }
-    const storedInfo = localStorage.getItem('yuktha-emergency-info');
-    if (storedInfo) {
-        try {
-            const parsedInfo = JSON.parse(storedInfo);
-            // Ensure all fields are present, if not, initialize
-            return {
-                bloodGroup: parsedInfo.bloodGroup || '',
-                bloodGroupOther: parsedInfo.bloodGroupOther || '',
-                allergies: parsedInfo.allergies || '',
-                allergiesOther: parsedInfo.allergiesOther || '',
-                medications: parsedInfo.medications || '',
-                medicationsOther: parsedInfo.medicationsOther || '',
-                emergencyContact: parsedInfo.emergencyContact || '',
-            };
-        } catch (error) {
-            console.error("Failed to parse emergency info from localStorage", error);
-        }
-    }
+  if (typeof window === 'undefined') {
+    // Return empty state during SSR
     return {
-        bloodGroup: '',
-        bloodGroupOther: '',
-        allergies: '',
-        allergiesOther: '',
-        medications: '',
-        medicationsOther: '',
-        emergencyContact: ''
+      bloodGroup: '',
+      bloodGroupOther: '',
+      allergies: '',
+      allergiesOther: '',
+      medications: '',
+      medicationsOther: '',
+      emergencyContact: ''
     };
+  }
+  const storedInfo = localStorage.getItem('yuktha-emergency-info');
+  if (storedInfo) {
+    try {
+      const parsedInfo = JSON.parse(storedInfo);
+      // Ensure all fields are present, if not, initialize
+      return {
+        bloodGroup: parsedInfo.bloodGroup || '',
+        bloodGroupOther: parsedInfo.bloodGroupOther || '',
+        allergies: parsedInfo.allergies || '',
+        allergiesOther: parsedInfo.allergiesOther || '',
+        medications: parsedInfo.medications || '',
+        medicationsOther: parsedInfo.medicationsOther || '',
+        emergencyContact: parsedInfo.emergencyContact || '',
+      };
+    } catch (error) {
+      console.error("Failed to parse emergency info from localStorage", error);
+    }
+  }
+  return {
+    bloodGroup: '',
+    bloodGroupOther: '',
+    allergies: '',
+    allergiesOther: '',
+    medications: '',
+    medicationsOther: '',
+    emergencyContact: ''
+  };
 };
 
 export const EmergencyInfoProvider = ({ children }: { children: ReactNode }) => {
@@ -104,34 +104,32 @@ export const EmergencyInfoProvider = ({ children }: { children: ReactNode }) => 
   }, []);
 
   const generateAndStoreToken = async (): Promise<string> => {
-    const token = await generateEmergencyTokenBrowser();
-    
-    // Store in backend database
+    // Generate token on server side
     try {
       const response = await fetch('/api/emergency-token', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
       });
 
-      if (!response.ok) {
-        console.error('Failed to store emergency token in backend');
-        // Still store locally as fallback
-        storeEmergencyToken(token);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.token) {
+          const newToken = data.data.token;
+          setEmergencyToken(newToken);
+          storeEmergencyToken(newToken);
+          return newToken;
+        }
       }
+
+      throw new Error('Failed to generate token from server');
     } catch (error) {
       console.error('Error storing emergency token:', error);
-      // Still store locally as fallback
-      storeEmergencyToken(token);
+      // Fallback only if absolutely necessary, but preferably fail to warn user
+      // For now, if server fails, we don't set a token to avoid false security
+      throw error;
     }
-    
-    setEmergencyToken(token);
-    return token;
   };
 
-   useEffect(() => {
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const hasFilledInfo = localStorage.getItem('yuktha-emergency-info-filled');
       if (!hasFilledInfo) {
@@ -143,12 +141,12 @@ export const EmergencyInfoProvider = ({ children }: { children: ReactNode }) => 
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-        localStorage.setItem('yuktha-emergency-info', JSON.stringify(emergencyInfo));
-        const isInfoEmpty = !emergencyInfo.bloodGroup && !emergencyInfo.allergies && !emergencyInfo.medications && !emergencyInfo.emergencyContact;
+      localStorage.setItem('yuktha-emergency-info', JSON.stringify(emergencyInfo));
+      const isInfoEmpty = !emergencyInfo.bloodGroup && !emergencyInfo.allergies && !emergencyInfo.medications && !emergencyInfo.emergencyContact;
 
-        if(!isInfoEmpty) {
-            localStorage.setItem('yuktha-emergency-info-filled', 'true');
-        }
+      if (!isInfoEmpty) {
+        localStorage.setItem('yuktha-emergency-info-filled', 'true');
+      }
     }
   }, [emergencyInfo]);
 

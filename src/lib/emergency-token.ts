@@ -12,18 +12,17 @@
 
 /**
  * Generate a unique emergency token using Web Crypto API
- * BROWSER-SAFE: Use this in client components
- * Works in all modern browsers (Chrome, Firefox, Safari, Edge)
- * @returns Promise<string> A UUID v4-like token
+ * @deprecated Use server-side generation via /api/emergency-token instead
  */
 export async function generateEmergencyTokenBrowser(): Promise<string> {
+  console.warn('generateEmergencyTokenBrowser is deprecated. Use server-side generation.');
   // Use Web Crypto API (available in all modern browsers)
   const buffer = new Uint8Array(16);
   crypto.getRandomValues(buffer);
 
   // Convert to UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
   const hex = (n: number) => n.toString(16).padStart(2, '0');
-  
+
   buffer[6] = (buffer[6] & 0x0f) | 0x40; // version 4
   buffer[8] = (buffer[8] & 0x3f) | 0x80; // variant 1
 

@@ -23,15 +23,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { token } = body;
-
-    if (!token || typeof token !== 'string') {
-      return NextResponse.json(
-        { error: 'Token is required' },
-        { status: 400 }
-      );
-    }
+    // Generate new secure token on server side
+    const token = crypto.randomUUID();
 
     // Deactivate any existing active tokens for this user
     await EmergencyToken.updateMany(
