@@ -78,6 +78,51 @@ export async function POST(request: NextRequest) {
 
         console.log('✅ Prescription Saved! ID:', newPrescription._id);
 
+        // 5. Generate Pill Tracking Schedule (7 Days)
+        try {
+            const frequency = prescriptionData.frequency.toLowerCase();
+            let timeSlots = ["09:00 AM"]; // Default
+
+            if (frequency.includes('twice') || frequency.includes('bd') || frequency.includes('bid') || frequency.includes('2 times')) {
+                timeSlots = ["09:00 AM", "09:00 PM"];
+            } else if (frequency.includes('thrice') || frequency.includes('tds') || frequency.includes('tid') || frequency.includes('3 times')) {
+                timeSlots = ["09:00 AM", "02:00 PM", "09:00 PM"];
+            } else if (frequency.includes('four') || frequency.includes('qid') || frequency.includes('4 times')) {
+                timeSlots = ["09:00 AM", "01:00 PM", "05:00 PM", "09:00 PM"];
+            }
+
+            const pillEntries: any[] = [];
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Generate for 7 days
+            for (let i = 0; i < 7; i++) {
+                const currentDate = new Date(today);
+                currentDate.setDate(today.getDate() + i);
+
+                timeSlots.forEach(time => {
+                    pillEntries.push({
+                        patientId: userId,
+                        prescriptionId: newPrescription._id,
+                        medicineName: prescriptionData.medicineName,
+                        dosage: prescriptionData.dosage,
+                        scheduledTime: time,
+                        date: currentDate,
+                        taken: false
+                    });
+                });
+            }
+
+            // Lazy import to avoid circular dependency issues if any
+            const PillTracking = (await import('@/models/PillTracking')).default;
+            await PillTracking.insertMany(pillEntries);
+            console.log(`✅ Generated ${pillEntries.length} pill tracking entries for 7 days`);
+
+        } catch (genError) {
+            console.error('⚠️ Failed to generate pill tracking entries:', genError);
+            // Non-blocking error, prescription is valid
+        }
+
         return NextResponse.json({
             success: true,
             message: 'Prescription issued successfully',

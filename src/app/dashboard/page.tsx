@@ -7,52 +7,58 @@ import { Pill, FileText, CheckCircle, Check, X, Users } from "lucide-react";
 import Link from 'next/link';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useMedicine } from "@/context/medicine-context";
 import { useEffect, useState } from "react";
-import { Medicine } from "@/lib/data";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { medicines, setMedicines, loading, refreshMedicines } = useMedicine();
+  const [pills, setPills] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [adherence, setAdherence] = useState(0);
-  const [todayMeds, setTodayMeds] = useState<Medicine[]>([]);
-  const [confirmation, setConfirmation] = useState<{medId: string | number, status: boolean, medName: string} | null>(null);
+  const [confirmation, setConfirmation] = useState<{medId: string, status: boolean, medName: string} | null>(null);
 
-  useEffect(() => {
-    const takenCount = medicines.filter(m => m.taken === true).length;
-    const skippedCount = medicines.filter(m => m.taken === false).length;
-    const totalDecided = takenCount + skippedCount;
-    const newAdherence = totalDecided > 0 ? Math.round((takenCount / totalDecided) * 100) : 0;
-    setAdherence(newAdherence);
-    setTodayMeds(medicines.slice(0,3));
-  }, [medicines]);
-
-  const handleDose = async (id: string | number, status: boolean) => {
-    // Optimistically update UI
-    setMedicines(medicines.map(med => med.id === id ? {...med, taken: status} : med));
-    
-    // Sync with backend
+  const fetchPills = async () => {
     try {
-      const response = await fetch(`/api/medicines/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ taken: status }),
-      });
-
-      if (!response.ok) {
-        // Revert on error
-        await refreshMedicines();
-        console.error('Failed to update medicine status');
+      const res = await fetch('/api/patient/pills/today');
+      if (res.ok) {
+        const data = await res.json();
+        setPills(data.pils || []);
       }
     } catch (error) {
-      console.error('Error updating medicine status:', error);
-      // Revert on error
-      await refreshMedicines();
+      console.error("Failed to fetch pills", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPills();
+  }, []);
+
+  useEffect(() => {
+    if (pills.length > 0) {
+        const takenCount = pills.filter(p => p.taken).length;
+        setAdherence(Math.round((takenCount / pills.length) * 100));
+    } else {
+        setAdherence(0);
+    }
+  }, [pills]);
+
+  const handleDose = async (id: string, status: boolean) => {
+    // Optimistic update
+    setPills(prev => prev.map(p => p._id === id ? { ...p, taken: status } : p));
+    
+    try {
+      await fetch(`/api/patient/pills/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taken: status }),
+      });
+    } catch (error) {
+      console.error('Error updating pill status:', error);
+      fetchPills(); // Revert on error
     }
   };
   
@@ -63,30 +69,19 @@ export default function DashboardPage() {
     }
   }
 
-  const getPillColor = (med: (typeof todayMeds)[0]) => {
-    if (med.taken === true) {
-      return "text-primary";
-    }
-    if (med.taken === false) {
-      return "text-destructive";
-    }
-    return "text-yellow-500";
+  const getPillColor = (taken: boolean) => {
+    return taken ? "text-primary" : "text-yellow-500"; 
   }
 
-    const getPillBg = (med: (typeof todayMeds)[0]) => {
-    if (med.taken === true) {
-      return "bg-primary/10";
-    }
-    if (med.taken === false) {
-      return "bg-destructive/10";
-    }
-    return "bg-yellow-400/20";
+    const getPillBg = (taken: boolean) => {
+    return taken ? "bg-primary/10" : "bg-yellow-400/20";
   }
 
 
   return (
     <div className="space-y-6 pb-24 sm:pb-8">
       <div className="bg-gradient-to-br from-cyan-400 to-green-400 text-white rounded-b-3xl sm:rounded-2xl p-6 shadow-lg space-y-4 sm:space-y-6 -mx-4 -mt-4 sm:mx-0 sm:mt-0">
+          {/* Header content consistent with previous design */}
           <div className="flex justify-between items-center">
               <div>
                   <h1 className="text-xl sm:text-2xl font-bold">Good Morning!</h1>
@@ -97,7 +92,7 @@ export default function DashboardPage() {
               </div>
           </div>
           <div>
-              <p className="text-xs sm:text-sm opacity-90">This Week's Adherence</p>
+              <p className="text-xs sm:text-sm opacity-90">Today's Adherence</p>
               <div className="flex items-end gap-2 sm:gap-4 mt-1">
                 <p className="text-4xl sm:text-5xl font-bold">{adherence}%</p>
                 <div className="relative h-12 w-12 sm:h-16 sm:w-16">
@@ -154,46 +149,38 @@ export default function DashboardPage() {
             </AlertDialog>
           {loading ? (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">Loading medicines...</p>
+              <p className="text-muted-foreground">Loading today's pills...</p>
             </div>
-          ) : todayMeds.length === 0 ? (
+          ) : pills.length === 0 ? (
             <div className="text-center py-12 border-2 border-dashed rounded-lg">
               <Pill className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-medium">No medicines prescribed yet</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Add medications to see them here.</p>
-              <Button asChild className="mt-4">
-                <Link href="/dashboard/med-tracker">
-                  <Pill className="mr-2 h-4 w-4"/> Add Medicine
-                </Link>
-              </Button>
+              <h3 className="mt-4 text-lg font-medium">No medicines scheduled for today</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Relax and stay healthy!</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {todayMeds.map(med => (
-                <Card key={med.id} className="shadow-none sm:shadow-soft flex items-center transition-all hover:sm:shadow-soft-lg">
+              {pills.map(pill => (
+                <Card key={pill._id} className="shadow-none sm:shadow-soft flex items-center transition-all hover:sm:shadow-soft-lg">
                     <CardContent className="p-4 flex items-center gap-4 flex-grow">
-                        <div className={`p-3 rounded-full ${getPillBg(med)}`}>
-                          <Pill className={`h-6 w-6 ${getPillColor(med)}`}/>
+                        <div className={`p-3 rounded-full ${getPillBg(pill.taken)}`}>
+                          <Pill className={`h-6 w-6 ${getPillColor(pill.taken)}`}/>
                         </div>
                         <div className="flex-grow">
-                            <p className="font-semibold">{med.name}</p>
-                            <p className="text-sm text-muted-foreground">{med.dosage}</p>
+                            <p className="font-semibold">{pill.medicineName}</p>
+                            <p className="text-sm text-muted-foreground">{pill.dosage}</p>
                         </div>
                         <div className="text-right">
-                           <p className="font-medium">{med.time}</p>
-                           {med.taken === null ? (
-                              <div className="flex items-center gap-1 mt-2">
-                                 <Button size="icon" variant="outline" className="h-8 w-8 bg-red-100/50 border-red-200 text-red-600 hover:bg-red-100" onClick={() => setConfirmation({medId: med.id, status: false, medName: med.name})}>
-                                      <X className="h-4 w-4"/>
-                                  </Button>
-                                  <Button size="icon" variant="outline" className="h-8 w-8 bg-green-100/50 border-green-200 text-green-600 hover:bg-green-100" onClick={() => setConfirmation({medId: med.id, status: true, medName: med.name})}>
-                                      <Check className="h-4 w-4"/>
+                           <p className="font-medium">{pill.scheduledTime}</p>
+                           {!pill.taken ? (
+                              <div className="flex items-center gap-1 mt-2 justify-end">
+                                  <Button size="sm" variant="outline" className="h-8 bg-green-50 text-green-600 hover:bg-green-100 border-green-200" onClick={() => setConfirmation({medId: pill._id, status: true, medName: pill.medicineName})}>
+                                      Mark Taken
                                   </Button>
                               </div>
-                          ) : med.taken === true ? (
-                              <Badge className="mt-2" variant="secondary">Taken</Badge>
                           ) : (
-                              <Badge className="mt-2" variant="destructive">Skipped</Badge>
+                              <Badge className="mt-2 bg-green-100 text-green-700 hover:bg-green-200 border-green-200">
+                                <Check className="w-3 h-3 mr-1" /> Taken
+                              </Badge>
                           )}
                         </div>
                     </CardContent>
