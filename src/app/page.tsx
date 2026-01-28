@@ -13,8 +13,10 @@ export default function RootPage() {
     if (user) {
       if (user.role === 'user') {
         router.replace('/dashboard');
-      } else if (user.role === 'doctor') {
-        router.replace('/doctor');
+      } else if (user.role === 'admin') {
+        router.replace('/admin');
+      } else if (user.role === 'hospital') {
+        router.replace('/hospital');
       }
     } else {
       router.replace('/login');
@@ -22,8 +24,8 @@ export default function RootPage() {
   }, [user, router]);
 
   return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <p>Loading...</p>
-      </div>
+    <div className="flex h-screen w-full items-center justify-center">
+      <p>Loading...</p>
+    </div>
   );
 }

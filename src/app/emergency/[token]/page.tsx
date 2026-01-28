@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 
 export default function EmergencyPage() {
   const params = useParams<{ token: string }>();
-  const token = params?.token as string;
+  const token = params.token;
 
   const { data: emergencyInfo, loading, error } = useEmergencyInfoFetch(token);
 

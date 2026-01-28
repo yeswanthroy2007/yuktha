@@ -66,7 +66,7 @@ const medicalInfoSchema = new Schema<IMedicalInfo>(
   }
 );
 
-// Index for quick lookup by userId
-medicalInfoSchema.index({ userId: 1 });
+// Index for quick lookup by userId is handled by unique: true on the field
+// medicalInfoSchema.index({ userId: 1 });
 
 export default mongoose.models.MedicalInfo || mongoose.model<IMedicalInfo>('MedicalInfo', medicalInfoSchema);

@@ -9,8 +9,8 @@
  * - AnalyzeUploadedReportOutput - The return type for the analyzeUploadedReport function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 import type { Report } from '@/lib/data';
 
 const AnalyzeUploadedReportInputSchema = z.object({
@@ -20,14 +20,14 @@ const AnalyzeUploadedReportInputSchema = z.object({
       "The lab report as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
   pastReports: z.array(z.object({
-      id: z.string(),
-      title: z.string(),
-      type: z.string(),
-      date: z.string(),
-      clinic: z.string().optional(),
-      file: z.any(),
-      analysis: z.any().optional(),
-      fileDataUri: z.string().optional(),
+    id: z.string(),
+    title: z.string(),
+    type: z.string(),
+    date: z.string(),
+    clinic: z.string().optional(),
+    file: z.any(),
+    analysis: z.any().optional(),
+    fileDataUri: z.string().optional(),
   })).optional().describe('Past lab reports for comparison.'),
 });
 
@@ -60,8 +60,8 @@ export async function analyzeUploadedReport(
 
 const analyzeReportPrompt = ai.definePrompt({
   name: 'analyzeReportPrompt',
-  input: {schema: AnalyzeUploadedReportInputSchema},
-  output: {schema: AnalyzeUploadedReportOutputSchema},
+  input: { schema: AnalyzeUploadedReportInputSchema },
+  output: { schema: AnalyzeUploadedReportOutputSchema },
   prompt: `You are an AI health assistant that analyzes lab reports, extracts key health parameters, compares them with past reports, and highlights changes with color-coded indicators.
 
 Analyze the following lab report:
@@ -89,7 +89,7 @@ const analyzeUploadedReportFlow = ai.defineFlow(
     outputSchema: AnalyzeUploadedReportOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const { output } = await analyzeReportPrompt(input);
     return output!;
   }
 );

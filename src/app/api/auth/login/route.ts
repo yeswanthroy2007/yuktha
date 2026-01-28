@@ -38,22 +38,22 @@ export async function POST(request: NextRequest) {
     // Find user and include password field
     console.log('🔍 Querying database for user...');
     let user = await User.findOne({ email: normalizedEmail }).select('+password');
-    
+
     // If password is not included, try alternative query
     if (user && !user.password) {
       console.log('⚠️ Password not included in first query, trying alternative...');
       user = await User.findOne({ email: normalizedEmail }).select('password email name firstName lastName qrCode emergencyDetailsCompleted');
     }
-    
+
     if (!user) {
       console.log('❌ USER NOT FOUND in database');
       console.log('❌ Searched for email:', normalizedEmail);
-      
+
       // Double check with different query
       const allUsers = await User.find({}).select('email');
       console.log('📊 Total users in DB:', allUsers.length);
       console.log('📊 Existing emails:', allUsers.map(u => u.email));
-      
+
       return NextResponse.json(
         { error: 'User not found' },
         { status: 401 }
@@ -69,12 +69,12 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Comparing passwords (plain text)...');
     console.log('🔑 Provided password:', password);
     console.log('🔑 Stored password:', user.password);
-    
+
     // Direct string comparison
     const isPasswordValid = user.password === password;
-    
+
     console.log('🔍 Password comparison result:', isPasswordValid);
-    
+
     if (!isPasswordValid) {
       console.log('❌ INCORRECT PASSWORD');
       console.log('❌ Password comparison failed for user:', normalizedEmail);
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Password verified successfully');
 
     // Generate JWT token
-    const token = generateToken(user._id.toString(), user.email);
+    const token = await generateToken(user._id.toString(), user.email);
     console.log('✅ Login successful for user:', email);
 
     // Get QR public URL if QR code exists

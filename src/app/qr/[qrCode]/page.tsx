@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 
 interface MedicalData {
@@ -22,8 +22,8 @@ interface MedicalData {
 }
 
 export default function QRPage() {
-  const params = useParams();
-  const qrCode = use(params).qrCode as string;
+  const params = useParams<{ qrCode: string }>();
+  const qrCode = params.qrCode;
   const [data, setData] = useState<MedicalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

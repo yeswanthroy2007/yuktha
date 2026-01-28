@@ -7,11 +7,13 @@ interface User {
   id: string;
   email: string;
   name: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   qrCode?: string;
   qrPublicUrl?: string | null;
-  emergencyDetailsCompleted: boolean;
+  emergencyDetailsCompleted?: boolean;
+  role: 'user' | 'admin' | 'hospital';
+  hospitalRoles?: string[];
 }
 
 interface AuthContextType {
@@ -39,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setLoading(true);
       const response = await fetch('/api/auth/me');
-      
+
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
@@ -61,7 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('📧 Auth Context: Email:', email);
       console.log('🔑 Auth Context: Password length:', password?.length || 0);
       console.log('📦 Auth Context: Payload:', { email, password: '[REDACTED]' });
-      
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -95,7 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('👤 Auth Context: Name:', name);
       console.log('📧 Auth Context: Email:', email);
       console.log('🔑 Auth Context: Password length:', password?.length || 0);
-      
+
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {

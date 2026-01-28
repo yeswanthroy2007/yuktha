@@ -18,7 +18,7 @@ export default function DoctorLayout({
   useEffect(() => {
     if (user === null) {
       router.push('/login');
-    } else if (user?.role !== 'doctor') {
+    } else if (user?.role !== 'hospital') {
       logout(); // Logout if role is incorrect
     }
   }, [user, router, logout]);
@@ -33,15 +33,15 @@ export default function DoctorLayout({
 
   return (
     <SidebarProvider>
-        <DoctorSidebar />
-        <SidebarInset>
-            <div className="flex justify-end p-2 sm:hidden">
-              <SidebarTrigger />
-            </div>
-            <main className="min-h-screen p-6 sm:p-8 lg:p-12">
-                {children}
-            </main>
-        </SidebarInset>
+      <DoctorSidebar />
+      <SidebarInset>
+        <div className="flex justify-end p-2 sm:hidden">
+          <SidebarTrigger />
+        </div>
+        <main className="min-h-screen p-6 sm:p-8 lg:p-12">
+          {children}
+        </main>
+      </SidebarInset>
     </SidebarProvider>
   );
 }

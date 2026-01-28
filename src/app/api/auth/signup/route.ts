@@ -79,13 +79,23 @@ export async function POST(request: NextRequest) {
     console.log('  - password length:', password.length);
     console.log('  - qrCode:', qrCode);
 
-    // Create new user (password will be hashed by pre-save hook)
+    // Manual password hashing
+    let hashedPassword;
+    try {
+      const salt = await bcrypt.genSalt(10);
+      hashedPassword = await bcrypt.hash(password, salt);
+    } catch (hashError: any) {
+      console.error('Bcrypt Hashing Error:', hashError);
+      return NextResponse.json({ error: 'Password hashing failed' }, { status: 500 });
+    }
+
+    // Create new user
     console.log('💾 Creating user in database...');
     let user;
     try {
       user = await User.create({
         email: normalizedEmail,
-        password, // Will be hashed by pre('save') hook
+        password: hashedPassword,
         name: name.trim(),
         firstName: finalFirstName,
         lastName: finalLastName,
@@ -114,7 +124,7 @@ export async function POST(request: NextRequest) {
     console.log('🔐 Password hash length:', savedUser?.password?.length || 0);
     console.log('🔐 Password starts with $2b$:', savedUser?.password?.startsWith('$2b$') || false);
     console.log('🔐 Password hash preview:', savedUser?.password?.substring(0, 30) + '...' || 'N/A');
-    
+
     // Verify we can compare the password
     if (savedUser?.password) {
       try {
@@ -144,7 +154,7 @@ export async function POST(request: NextRequest) {
 
     // Generate JWT token
     console.log('🔑 Generating JWT token...');
-    const token = generateToken(user._id.toString(), user.email);
+    const token = await generateToken(user._id.toString(), user.email);
     console.log('✅ JWT token generated');
 
     // Construct response
@@ -187,7 +197,7 @@ export async function POST(request: NextRequest) {
     console.error('❌ Error message:', error?.message);
     console.error('❌ Error code:', error?.code);
     console.error('❌ Full error:', error);
-    
+
     // Log validation errors if they exist
     if (error.errors) {
       console.error('❌ Validation errors:');
@@ -195,7 +205,7 @@ export async function POST(request: NextRequest) {
         console.error(`  - ${key}:`, error.errors[key].message);
       });
     }
-    
+
     // Handle duplicate key error
     if (error.code === 11000) {
       console.error('❌ Duplicate key error (user already exists)');
@@ -217,7 +227,7 @@ export async function POST(request: NextRequest) {
 
     // Return detailed error for debugging
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to create user',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       },

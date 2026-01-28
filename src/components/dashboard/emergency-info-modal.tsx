@@ -37,7 +37,7 @@ export function EmergencyInfoModal() {
   useEffect(() => {
     // Check if user has completed emergency details
     if (user) {
-      setHasFilledInfo(user.emergencyDetailsCompleted);
+      setHasFilledInfo(user.emergencyDetailsCompleted ?? true);
       // Auto-open modal if not completed
       if (!user.emergencyDetailsCompleted) {
         setIsModalOpen(true);
@@ -96,27 +96,27 @@ export function EmergencyInfoModal() {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const { id, value } = e.target;
-      setFormData(prev => ({ ...prev, [id]: value }));
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
   };
 
   const handleSubmit = async () => {
     const { bloodGroup, bloodGroupOther, allergies, allergiesOther, medications, medicationsOther, emergencyContact } = formData;
 
-    if (!bloodGroup || 
-        (bloodGroup === 'Other' && !bloodGroupOther) || 
-        !allergies || 
-        (allergies === 'Other' && !allergiesOther) || 
-        !medications ||
-        (medications === 'Other' && !medicationsOther) ||
-        !emergencyContact
+    if (!bloodGroup ||
+      (bloodGroup === 'Other' && !bloodGroupOther) ||
+      !allergies ||
+      (allergies === 'Other' && !allergiesOther) ||
+      !medications ||
+      (medications === 'Other' && !medicationsOther) ||
+      !emergencyContact
     ) {
-        toast({
-            variant: "destructive",
-            title: "Incomplete Form",
-            description: "Please fill out all fields before saving.",
-        });
-        return;
+      toast({
+        variant: "destructive",
+        title: "Incomplete Form",
+        description: "Please fill out all fields before saving.",
+      });
+      return;
     }
 
     setIsSaving(true);
@@ -133,10 +133,10 @@ export function EmergencyInfoModal() {
         setEmergencyInfo(formData);
         setHasFilledInfo(true);
         setIsModalOpen(false);
-        
+
         // Refresh user data to get updated emergencyDetailsCompleted
         await refreshUser();
-        
+
         toast({
           title: "Success!",
           description: "Your Emergency Medical File has been saved.",
@@ -172,68 +172,68 @@ export function EmergencyInfoModal() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="bloodGroup">Blood Group</Label>
-                <div className="flex gap-2">
-                  <Select onValueChange={handleSelectChange('bloodGroup')} value={formData.bloodGroup}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select blood group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {bloodGroups.map(bg => <SelectItem key={bg} value={bg}>{bg}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {formData.bloodGroup === 'Other' && (
-                    <Input id="bloodGroupOther" value={formData.bloodGroupOther} onChange={handleInputChange} placeholder="Specify blood group" />
-                  )}
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="bloodGroup">Blood Group</Label>
+              <div className="flex gap-2">
+                <Select onValueChange={handleSelectChange('bloodGroup')} value={formData.bloodGroup}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select blood group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bloodGroups.map(bg => <SelectItem key={bg} value={bg}>{bg}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {formData.bloodGroup === 'Other' && (
+                  <Input id="bloodGroupOther" value={formData.bloodGroupOther} onChange={handleInputChange} placeholder="Specify blood group" />
+                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="allergies">Allergies</Label>
-                 <div className="flex gap-2">
-                    <Select onValueChange={handleSelectChange('allergies')} value={formData.allergies}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select allergies" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {commonAllergies.map(allergy => <SelectItem key={allergy} value={allergy}>{allergy}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    {formData.allergies === 'Other' && (
-                      <Input id="allergiesOther" value={formData.allergiesOther} onChange={handleInputChange} placeholder="Specify allergies" />
-                    )}
-                 </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="allergies">Allergies</Label>
+              <div className="flex gap-2">
+                <Select onValueChange={handleSelectChange('allergies')} value={formData.allergies}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select allergies" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {commonAllergies.map(allergy => <SelectItem key={allergy} value={allergy}>{allergy}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {formData.allergies === 'Other' && (
+                  <Input id="allergiesOther" value={formData.allergiesOther} onChange={handleInputChange} placeholder="Specify allergies" />
+                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="medications">Current Medications</Label>
-                <div className="flex gap-2">
-                    <Select onValueChange={handleSelectChange('medications')} value={formData.medications}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select medications" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {commonMeds.map(med => <SelectItem key={med} value={med}>{med}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    {formData.medications === 'Other' && (
-                      <Input id="medicationsOther" value={formData.medicationsOther} onChange={handleInputChange} placeholder="Specify medications" />
-                    )}
-                </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="medications">Current Medications</Label>
+              <div className="flex gap-2">
+                <Select onValueChange={handleSelectChange('medications')} value={formData.medications}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select medications" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {commonMeds.map(med => <SelectItem key={med} value={med}>{med}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {formData.medications === 'Other' && (
+                  <Input id="medicationsOther" value={formData.medicationsOther} onChange={handleInputChange} placeholder="Specify medications" />
+                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="emergencyContact">Emergency Contact</Label>
-                <Input id="emergencyContact" placeholder="Name - Phone Number" value={formData.emergencyContact} onChange={handleInputChange} />
-              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="emergencyContact">Emergency Contact</Label>
+              <Input id="emergencyContact" placeholder="Name - Phone Number" value={formData.emergencyContact} onChange={handleInputChange} />
+            </div>
           </div>
           <DialogFooter>
-              <Button 
-                type="submit" 
-                onClick={handleSubmit} 
-                className="w-full"
-                disabled={isSaving}
-              >
-                {isSaving ? 'Saving...' : 'Save Information'}
-              </Button>
+            <Button
+              type="submit"
+              onClick={handleSubmit}
+              className="w-full"
+              disabled={isSaving}
+            >
+              {isSaving ? 'Saving...' : 'Save Information'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
