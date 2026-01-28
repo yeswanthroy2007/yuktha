@@ -65,26 +65,34 @@ export async function middleware(request: NextRequest) {
         return NextResponse.next();
     }
 
-    if (pathname.startsWith('/dashboard') || pathname.startsWith('/doctor') || (pathname.startsWith('/hospital') && !pathname.startsWith('/hospital/login'))) {
+    // Hospital routes protection (Strict)
+    if (pathname.startsWith('/hospital') && !pathname.startsWith('/hospital/login')) {
         const token = extractToken(request);
 
         if (!token) {
-            const loginUrl = new URL('/login', request.url);
-            if (pathname.startsWith('/hospital')) {
-                loginUrl.pathname = '/hospital/login';
-            }
-            loginUrl.searchParams.set('redirect', pathname);
-            return NextResponse.redirect(loginUrl);
+            return NextResponse.redirect(new URL('/hospital/login?redirect=' + pathname, request.url));
+        }
+
+        const payload = await verifyToken(token);
+        if (!payload || payload.role !== 'hospital') {
+            // If they are logged in but not a hospital, redirect to appropriate dashboard or login
+            return NextResponse.redirect(new URL('/hospital/login?error=unauthorized_role', request.url));
+        }
+
+        return NextResponse.next();
+    }
+
+    // General user/doctor dashboard protection
+    if (pathname.startsWith('/dashboard') || pathname.startsWith('/doctor')) {
+        const token = extractToken(request);
+
+        if (!token) {
+            return NextResponse.redirect(new URL('/login?redirect=' + pathname, request.url));
         }
 
         const payload = await verifyToken(token);
         if (!payload) {
-            const loginUrl = new URL('/login', request.url);
-            if (pathname.startsWith('/hospital')) {
-                loginUrl.pathname = '/hospital/login';
-            }
-            loginUrl.searchParams.set('redirect', pathname);
-            return NextResponse.redirect(loginUrl);
+            return NextResponse.redirect(new URL('/login?redirect=' + pathname, request.url));
         }
 
         return NextResponse.next();

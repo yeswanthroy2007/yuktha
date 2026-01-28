@@ -35,7 +35,14 @@ export async function generateToken(
 ): Promise<string> {
   const payload: any = { userId, email, role };
   if (hospitalRoles) {
-    payload.hospitalRoles = hospitalRoles;
+    // CRITICAL FIX: Mongoose arrays are Proxies that confuse structuredClone/SignJWT.
+    // We must strictly sanitize this to a plain JS array of strings.
+    try {
+      payload.hospitalRoles = JSON.parse(JSON.stringify(hospitalRoles));
+    } catch (e) {
+      console.error("Sanitization failed for hospitalRoles, defaulting to empty array", e);
+      payload.hospitalRoles = [];
+    }
   }
 
   return await new SignJWT(payload)

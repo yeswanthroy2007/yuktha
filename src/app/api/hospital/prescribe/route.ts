@@ -1,61 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
+import Prescription from '@/models/Prescription';
 import User from '@/models/User';
-import Medicine from '@/models/Medicine';
-import MedicalRecord from '@/models/MedicalRecord';
+import Hospital from '@/models/Hospital';
 import { getAuthenticatedUser } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
     try {
-        const hospital = await getAuthenticatedUser(request);
-        if (!hospital || hospital.role !== 'hospital') {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-        }
-
-        if (!hospital.hospitalRoles?.includes('doctor')) {
-            return NextResponse.json({ error: 'Only Doctors can prescribe medicines' }, { status: 403 });
-        }
-
+        console.log('💊 Prescription Request Received');
         await dbConnect();
-        const { userId, name, dosage, time, instructions } = await request.json();
+
+        // 1. Authentication Check
+        const authUser = await getAuthenticatedUser(request);
+        if (!authUser || authUser.role !== 'hospital') {
+            console.warn('❌ Unauthorized prescription attempt');
+            return NextResponse.json({ error: 'Unauthorized: Hospital access required' }, { status: 401 });
+        }
+
+        const hospitalId = authUser.userId;
+        console.log('🏥 Hospital ID from JWT:', hospitalId);
+
+        // 2. Body Validation
+        let body;
+        try {
+            body = await request.json();
+        } catch (e) {
+            console.error('❌ Failed to parse body');
+            return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+        }
+
+        console.log('📝 Request Body:', JSON.stringify(body, null, 2));
+
+        const { userId, name, dosage, time, instructions, route } = body;
+
+        // Map frontend fields (medForm) to schema fields
+        // Frontend: userId, name, dosage, time, instructions, route
+        // Schema: patientId, medicineName, dosage, frequency, instructions, route
 
         if (!userId || !name || !dosage || !time) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+            console.error('❌ Missing required fields');
+            return NextResponse.json({
+                error: 'Missing required fields: userId, name, dosage, or time'
+            }, { status: 400 });
         }
 
-        // 1. Create Medicine entry for User Tracker
-        const medicine = await Medicine.create({
-            userId,
-            name,
-            dosage,
-            time,
-            instructions,
-            taken: false,
-            prescribedBy: hospital.email,
-        });
+        // 3. Patient Lookup
+        console.log('🔍 verifying patient:', userId);
+        let patient;
+        try {
+            patient = await User.findById(userId);
+        } catch (err) {
+            console.error('❌ Invalid User ID format:', err);
+            return NextResponse.json({ error: 'Invalid Patient ID' }, { status: 400 });
+        }
 
-        // 2. Create/Update Medical Record for history
-        await MedicalRecord.create({
-            userId,
-            hospitalId: hospital.userId,
-            prescribedBy: hospital.email,
-            medicines: [{
-                name,
-                dosage,
-                frequency: time,
-                instructions,
-                status: 'Prescribed'
-            }]
-        });
+        if (!patient) {
+            console.error('❌ Patient not found in DB');
+            return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
+        }
+        console.log('✅ Patient found:', patient.name);
+
+        // 4. Create Prescription
+        const prescriptionData = {
+            patientId: userId,
+            hospitalId: hospitalId,
+            medicineName: name,
+            dosage: dosage,
+            frequency: time, // mapped from 'time'
+            instructions: instructions || '',
+            route: route || 'Oral',
+            creatorEmail: authUser.email
+        };
+
+        console.log('💾 Saving Prescription:', prescriptionData);
+
+        const newPrescription = await Prescription.create(prescriptionData);
+
+        console.log('✅ Prescription Saved! ID:', newPrescription._id);
 
         return NextResponse.json({
             success: true,
-            medicine,
-            message: 'Medicine prescribed and recorded successfully'
-        });
+            message: 'Prescription issued successfully',
+            prescription: newPrescription
+        }, { status: 200 });
 
     } catch (error: any) {
-        console.error('Prescribe Error:', error);
-        return NextResponse.json({ error: 'Failed to prescribe medicine' }, { status: 500 });
+        console.error('🔥 Prescription API CRASH:', error);
+        return NextResponse.json({
+            error: 'Internal Server Error',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        }, { status: 500 });
     }
 }

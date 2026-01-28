@@ -56,18 +56,18 @@ export function HospitalSidebar() {
 
     return (
         <>
-            <Sidebar>
-                <SidebarHeader>
+            <Sidebar className="border-r border-slate-800 bg-slate-950 text-slate-200" collapsible="icon">
+                <SidebarHeader className="border-b border-slate-800 bg-slate-950">
                     <div className="flex items-center gap-2 px-4 py-2">
-                        <div className="bg-blue-600 text-white p-1 rounded-md">
+                        <div className="bg-slate-100 text-slate-950 p-1 rounded-md">
                             <Building2 className="h-5 w-5" />
                         </div>
-                        <span className="font-semibold text-lg text-blue-950">Hospital Portal</span>
+                        <span className="font-semibold text-lg text-slate-100 tracking-tight">Hospital Portal</span>
                     </div>
                 </SidebarHeader>
-                <SidebarContent>
+                <SidebarContent className="bg-slate-950">
                     <SidebarGroup>
-                        <SidebarGroupLabel>Operations</SidebarGroupLabel>
+                        <SidebarGroupLabel className="text-slate-500 uppercase tracking-wider text-xs font-bold">Operations</SidebarGroupLabel>
                         <SidebarGroupContent>
                             <SidebarMenu>
                                 {menuItems.map((item) => (
@@ -75,7 +75,9 @@ export function HospitalSidebar() {
                                         <SidebarMenuButton
                                             asChild
                                             isActive={pathname === item.url}
-                                            className={pathname === item.url ? "bg-blue-50 text-blue-900 font-medium" : "text-slate-600"}
+                                            className={pathname === item.url 
+                                                ? "bg-slate-800 text-white font-medium hover:bg-slate-800 hover:text-white" 
+                                                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"}
                                         >
                                             <a href={item.url}>
                                                 <item.icon className="h-4 w-4" />
@@ -88,12 +90,12 @@ export function HospitalSidebar() {
                         </SidebarGroupContent>
                     </SidebarGroup>
                 </SidebarContent>
-                <SidebarFooter>
+                <SidebarFooter className="border-t border-slate-800 bg-slate-950 p-2">
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton
                                 onClick={() => setShowLogoutDialog(true)}
-                                className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                className="text-slate-400 hover:bg-slate-900 hover:text-white transition-colors"
                             >
                                 <LogOut className="h-4 w-4" />
                                 <span>Sign Out</span>

@@ -65,20 +65,20 @@ export default function HospitalLoginPage() {
                 </div>
             </div>
 
-            <Card className="w-full max-w-md shadow-2xl border-none ring-1 ring-slate-200 animate-in zoom-in-95 duration-500">
-                <CardHeader className="space-y-1 pb-6 text-center border-b border-slate-50">
-                    <CardTitle className="text-xl font-bold font-headline text-slate-900">Sign In</CardTitle>
-                    <CardDescription>Enter your hospital credentials to access the clinical dashboard.</CardDescription>
+            <Card className="w-full max-w-md shadow-2xl border-slate-800 bg-slate-900 ring-1 ring-slate-800 animate-in zoom-in-95 duration-500 text-slate-200">
+                <CardHeader className="space-y-1 pb-6 text-center border-b border-slate-800">
+                    <CardTitle className="text-xl font-bold font-headline text-slate-100">Sign In</CardTitle>
+                    <CardDescription className="text-slate-400">Enter your hospital credentials to access the clinical dashboard.</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-8">
                     <form onSubmit={handleLogin} className="space-y-5">
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-xs font-bold uppercase text-slate-500 tracking-wider">Email / Staff ID</Label>
+                            <Label htmlFor="email" className="text-xs font-bold uppercase text-slate-400 tracking-wider">Email / Staff ID</Label>
                             <Input
                                 id="email"
                                 type="email"
                                 placeholder="dr.smith@hospital.com"
-                                className="h-12 bg-slate-50 border-slate-200 focus:bg-white transition-all"
+                                className="h-12 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 focus:bg-slate-950 focus:border-blue-700 transition-all"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
@@ -86,20 +86,20 @@ export default function HospitalLoginPage() {
                         </div>
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                                <Label htmlFor="password" className="text-xs font-bold uppercase text-slate-500 tracking-wider">Secure Password</Label>
-                                <button type="button" className="text-xs text-blue-600 hover:underline font-medium">Forgot?</button>
+                                <Label htmlFor="password" className="text-xs font-bold uppercase text-slate-400 tracking-wider">Secure Password</Label>
+                                <button type="button" className="text-xs text-blue-500 hover:underline font-medium">Forgot?</button>
                             </div>
                             <Input
                                 id="password"
                                 type="password"
                                 placeholder="••••••••"
-                                className="h-12 bg-slate-50 border-slate-200 focus:bg-white transition-all"
+                                className="h-12 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 focus:bg-slate-950 focus:border-blue-700 transition-all"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
                         </div>
-                        <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-base font-bold shadow-lg shadow-blue-100 group transition-all" disabled={loading}>
+                        <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white text-base font-bold shadow-lg shadow-blue-900/20 group transition-all" disabled={loading}>
                             {loading ? (
                                 <span className="flex items-center gap-2">
                                     <Activity className="w-4 h-4 animate-spin" /> Verifying...
@@ -112,7 +112,7 @@ export default function HospitalLoginPage() {
                         </Button>
                     </form>
                 </CardContent>
-                <CardFooter className="bg-slate-50/50 text-center text-[10px] text-slate-400 justify-center p-4 border-t border-slate-100 rounded-b-xl uppercase tracking-tighter">
+                <CardFooter className="bg-slate-950/30 text-center text-[10px] text-slate-500 justify-center p-4 border-t border-slate-800 rounded-b-xl uppercase tracking-tighter">
                     Usage is monitored and recorded • Authorized Personnel Only
                 </CardFooter>
             </Card>
